@@ -40,14 +40,12 @@ func RunTest(testCase config.TestCase) TestResult {
 	result.StatusCode = resp.StatusCode
 
 	// Validate statuc code
-	if testCase.Validation.StatusCode != "" {
-		if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), testCase.Validation.StatusCode) {
-			result.Passed = false
-		}
-	} else {
-		if resp.StatusCode != http.StatusOK {
-			result.Passed = false
-		}
+	if testCase.Validation.StatusCode == "" {
+		testCase.Validation.StatusCode = "2"
+	}
+
+	if !strings.HasPrefix(strconv.Itoa(resp.StatusCode), testCase.Validation.StatusCode) {
+		result.Passed = false
 	}
 
 	return result
