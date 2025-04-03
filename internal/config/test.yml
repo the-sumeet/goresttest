@@ -3,7 +3,13 @@
   method: "GET"
 
 - name: "Test invalid endpoint"
-  url: "https://jsonplaceholder.typicode.com/ew3rwf3r"
+  url: "https://jsonplaceholder.typicode.com/foo"
   method: "GET"
   validation: 
     status_code: 4
+
+- name: "Test invalid endpoint"
+  url: "https://jsonplaceholder.typicode.com/foo"
+  method: "GET"
+  validation: 
+    status_code: "404"
