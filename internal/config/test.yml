@@ -1,0 +1,9 @@
+- name: "Get public API"
+  url: "https://jsonplaceholder.typicode.com"
+  method: "GET"
+
+- name: "Test invalid endpoint"
+  url: "https://jsonplaceholder.typicode.com/ew3rwf3r"
+  method: "GET"
+  validation: 
+    status_code: 4
