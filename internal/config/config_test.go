@@ -17,16 +17,20 @@ func TestLoadTestCases(t *testing.T) {
 			Name:   "Test invalid endpoint",
 			URL:    "https://jsonplaceholder.typicode.com/foo",
 			Method: "GET",
-			Validation: Validation{
-				StatusCode: "4",
+			Validation: []Validation{
+				{
+					StatusCode: "4",
+				},
 			},
 		},
 		{
 			Name:   "Test invalid endpoint",
 			URL:    "https://jsonplaceholder.typicode.com/foo",
 			Method: "GET",
-			Validation: Validation{
-				StatusCode: "404",
+			Validation: []Validation{
+				{
+					StatusCode: "404",
+				},
 			},
 		},
 	}
