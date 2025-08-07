@@ -16,8 +16,6 @@ func main() {
 		outputFile   = flag.String("file", "", "Output file path (for json/html formats)")
 		parallel     = flag.Bool("parallel", false, "Run tests in parallel")
 		maxWorkers   = flag.Int("workers", 10, "Maximum number of parallel workers")
-		benchOnly    = flag.Bool("bench-only", false, "Run only benchmarks")
-		testOnly     = flag.Bool("test-only", false, "Run only tests")
 		verbose      = flag.Bool("verbose", false, "Verbose output")
 		version      = flag.Bool("version", false, "Show version information")
 	)
@@ -31,7 +29,6 @@ func main() {
 		fmt.Fprintf(os.Stderr, "  %s -config tests.yaml\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -config tests.yaml -parallel -workers 5\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -config tests.yaml -output html -file report.html\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -config tests.yaml -bench-only\n", os.Args[0])
 	}
 	
 	flag.Parse()
@@ -68,7 +65,6 @@ func main() {
 		fmt.Printf("Loaded test suite: %s\n", suite.Name)
 		fmt.Printf("Base URL: %s\n", suite.BaseURL)
 		fmt.Printf("Tests: %d\n", len(suite.Tests))
-		fmt.Printf("Benchmarks: %d\n", len(suite.Benchmarks))
 		fmt.Printf("Parallel: %t\n", suite.Parallel)
 		if suite.Parallel {
 			fmt.Printf("Max Workers: %d\n", suite.MaxWorkers)
@@ -77,9 +73,8 @@ func main() {
 	}
 	
 	var testResults []*TestResult
-	var benchResults []*BenchmarkResult
 	
-	if !*benchOnly && len(suite.Tests) > 0 {
+	if len(suite.Tests) > 0 {
 		executor := NewTestExecutor(suite.BaseURL)
 		testResults, err = executor.ExecuteTestSuite(suite)
 		if err != nil {
@@ -87,19 +82,11 @@ func main() {
 		}
 	}
 	
-	if !*testOnly && len(suite.Benchmarks) > 0 {
-		benchExecutor := NewBenchmarkExecutor(suite.BaseURL)
-		benchResults, err = benchExecutor.ExecuteBenchmarks(suite.Benchmarks, suite.Variables)
-		if err != nil {
-			log.Fatalf("Failed to execute benchmarks: %v", err)
-		}
-	}
-	
 	reporter := NewReporter()
 	
 	switch strings.ToLower(*outputFormat) {
 	case "console":
-		reporter.PrintConsoleReport(testResults, benchResults)
+		reporter.PrintConsoleReport(testResults)
 		
 	case "json":
 		filename := *outputFile
@@ -107,7 +94,7 @@ func main() {
 			filename = "test-report.json"
 		}
 		
-		if err := reporter.GenerateJSONReport(testResults, benchResults, filename); err != nil {
+		if err := reporter.GenerateJSONReport(testResults, filename); err != nil {
 			log.Fatalf("Failed to generate JSON report: %v", err)
 		}
 		
@@ -119,7 +106,7 @@ func main() {
 			filename = "test-report.html"
 		}
 		
-		if err := reporter.GenerateHTMLReport(testResults, benchResults, filename); err != nil {
+		if err := reporter.GenerateHTMLReport(testResults, filename); err != nil {
 			log.Fatalf("Failed to generate HTML report: %v", err)
 		}
 		

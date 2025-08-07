@@ -15,7 +15,7 @@ func NewReporter() *Reporter {
 	return &Reporter{}
 }
 
-func (r *Reporter) PrintConsoleReport(testResults []*TestResult, benchResults []*BenchmarkResult) {
+func (r *Reporter) PrintConsoleReport(testResults []*TestResult) {
 	fmt.Println("=== API Test Results ===")
 	fmt.Println()
 	
@@ -23,12 +23,7 @@ func (r *Reporter) PrintConsoleReport(testResults []*TestResult, benchResults []
 		r.printTestResults(testResults)
 	}
 	
-	if len(benchResults) > 0 {
-		fmt.Println()
-		r.printBenchmarkResults(benchResults)
-	}
-	
-	r.printSummary(testResults, benchResults)
+	r.printSummary(testResults)
 }
 
 func (r *Reporter) printTestResults(results []*TestResult) {
@@ -59,25 +54,8 @@ func (r *Reporter) printTestResults(results []*TestResult) {
 	}
 }
 
-func (r *Reporter) printBenchmarkResults(results []*BenchmarkResult) {
-	fmt.Println("Benchmark Results:")
-	fmt.Println(strings.Repeat("-", 80))
-	
-	for _, result := range results {
-		fmt.Printf("Benchmark: %s\n", result.Name)
-		fmt.Printf("  Total Requests: %d\n", result.TotalRequests)
-		fmt.Printf("  Successful: %d\n", result.SuccessfulReqs)
-		fmt.Printf("  Failed: %d\n", result.FailedReqs)
-		fmt.Printf("  Total Time: %v\n", result.TotalTime)
-		fmt.Printf("  Requests/sec: %.2f\n", result.RequestsPerSec)
-		fmt.Printf("  Avg Response Time: %v\n", result.AvgResponseTime)
-		fmt.Printf("  Min Response Time: %v\n", result.MinResponseTime)
-		fmt.Printf("  Max Response Time: %v\n", result.MaxResponseTime)
-		fmt.Println()
-	}
-}
 
-func (r *Reporter) printSummary(testResults []*TestResult, benchResults []*BenchmarkResult) {
+func (r *Reporter) printSummary(testResults []*TestResult) {
 	fmt.Println(strings.Repeat("=", 80))
 	
 	if len(testResults) > 0 {
@@ -94,27 +72,20 @@ func (r *Reporter) printSummary(testResults []*TestResult, benchResults []*Bench
 		
 		fmt.Printf("Tests: %d total, %d passed, %d failed\n", len(testResults), passed, failed)
 	}
-	
-	if len(benchResults) > 0 {
-		fmt.Printf("Benchmarks: %d executed\n", len(benchResults))
-	}
 }
 
-func (r *Reporter) GenerateJSONReport(testResults []*TestResult, benchResults []*BenchmarkResult, filename string) error {
+func (r *Reporter) GenerateJSONReport(testResults []*TestResult, filename string) error {
 	report := struct {
-		Timestamp  time.Time          `json:"timestamp"`
-		Tests      []*TestResult      `json:"tests"`
-		Benchmarks []*BenchmarkResult `json:"benchmarks"`
-		Summary    struct {
-			TotalTests   int `json:"total_tests"`
-			PassedTests  int `json:"passed_tests"`
-			FailedTests  int `json:"failed_tests"`
-			Benchmarks   int `json:"benchmarks"`
+		Timestamp time.Time     `json:"timestamp"`
+		Tests     []*TestResult `json:"tests"`
+		Summary   struct {
+			TotalTests  int `json:"total_tests"`
+			PassedTests int `json:"passed_tests"`
+			FailedTests int `json:"failed_tests"`
 		} `json:"summary"`
 	}{
-		Timestamp:  time.Now(),
-		Tests:      testResults,
-		Benchmarks: benchResults,
+		Timestamp: time.Now(),
+		Tests:     testResults,
 	}
 	
 	passed := 0
@@ -130,7 +101,6 @@ func (r *Reporter) GenerateJSONReport(testResults []*TestResult, benchResults []
 	report.Summary.TotalTests = len(testResults)
 	report.Summary.PassedTests = passed
 	report.Summary.FailedTests = failed
-	report.Summary.Benchmarks = len(benchResults)
 	
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -140,7 +110,7 @@ func (r *Reporter) GenerateJSONReport(testResults []*TestResult, benchResults []
 	return os.WriteFile(filename, data, 0644)
 }
 
-func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, benchResults []*BenchmarkResult, filename string) error {
+func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, filename string) error {
 	tmpl := `<!DOCTYPE html>
 <html>
 <head>
@@ -184,10 +154,6 @@ func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, benchResults []
             <p>Passed: {{.Summary.PassedTests}}</p>
             <p>Failed: {{.Summary.FailedTests}}</p>
         </div>
-        <div class="summary-card">
-            <h3>Benchmarks</h3>
-            <p>Executed: {{.Summary.Benchmarks}}</p>
-        </div>
     </div>
 
     {{if .Tests}}
@@ -217,54 +183,20 @@ func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, benchResults []
     </div>
     {{end}}
 
-    {{if .Benchmarks}}
-    <div class="benchmarks">
-        <h2>Benchmark Results</h2>
-        <table>
-            <tr>
-                <th>Name</th>
-                <th>Total Requests</th>
-                <th>Successful</th>
-                <th>Failed</th>
-                <th>Total Time</th>
-                <th>Requests/sec</th>
-                <th>Avg Response Time</th>
-                <th>Min Response Time</th>
-                <th>Max Response Time</th>
-            </tr>
-            {{range .Benchmarks}}
-            <tr>
-                <td>{{.Name}}</td>
-                <td>{{.TotalRequests}}</td>
-                <td>{{.SuccessfulReqs}}</td>
-                <td>{{.FailedReqs}}</td>
-                <td>{{.TotalTime}}</td>
-                <td>{{printf "%.2f" .RequestsPerSec}}</td>
-                <td>{{.AvgResponseTime}}</td>
-                <td>{{.MinResponseTime}}</td>
-                <td>{{.MaxResponseTime}}</td>
-            </tr>
-            {{end}}
-        </table>
-    </div>
-    {{end}}
 </body>
 </html>`
 
 	report := struct {
-		Timestamp  string             `json:"timestamp"`
-		Tests      []*TestResult      `json:"tests"`
-		Benchmarks []*BenchmarkResult `json:"benchmarks"`
-		Summary    struct {
-			TotalTests   int `json:"total_tests"`
-			PassedTests  int `json:"passed_tests"`
-			FailedTests  int `json:"failed_tests"`
-			Benchmarks   int `json:"benchmarks"`
+		Timestamp string        `json:"timestamp"`
+		Tests     []*TestResult `json:"tests"`
+		Summary   struct {
+			TotalTests  int `json:"total_tests"`
+			PassedTests int `json:"passed_tests"`
+			FailedTests int `json:"failed_tests"`
 		} `json:"summary"`
 	}{
-		Timestamp:  time.Now().Format("2006-01-02 15:04:05"),
-		Tests:      testResults,
-		Benchmarks: benchResults,
+		Timestamp: time.Now().Format("2006-01-02 15:04:05"),
+		Tests:     testResults,
 	}
 	
 	passed := 0
@@ -280,7 +212,6 @@ func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, benchResults []
 	report.Summary.TotalTests = len(testResults)
 	report.Summary.PassedTests = passed
 	report.Summary.FailedTests = failed
-	report.Summary.Benchmarks = len(benchResults)
 	
 	t, err := template.New("report").Parse(tmpl)
 	if err != nil {
