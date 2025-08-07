@@ -203,6 +203,30 @@ func TestAssertionEngine_JSONPath(t *testing.T) {
 			},
 			wantError: true,
 		},
+		{
+			name: "json path number with int expected - success",
+			result: &TestResult{
+				Response: jsonResponse,
+			},
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "age",
+				Expected: 30, // int instead of float64
+			},
+			wantError: false,
+		},
+		{
+			name: "json path array element with int expected - success",
+			result: &TestResult{
+				Response: jsonResponse,
+			},
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "scores[0]",
+				Expected: 85, // int instead of float64
+			},
+			wantError: false,
+		},
 	}
 
 	for _, tt := range tests {
