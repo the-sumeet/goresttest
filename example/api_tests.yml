@@ -74,15 +74,3 @@ tests:
         path: "title"
         expected: "Test Post by ${user_name}"
 
-benchmarks:
-  - name: "Users API Benchmark"
-    method: "GET"
-    url: "/users"
-    concurrent: 10
-    requests: 100
-
-  - name: "Posts API Load Test"
-    method: "GET"  
-    url: "/posts"
-    concurrent: 5
-    duration: "30s"

@@ -7,7 +7,6 @@ type TestSuite struct {
 	BaseURL     string            `yaml:"base_url"`
 	Variables   map[string]string `yaml:"variables"`
 	Tests       []Test            `yaml:"tests"`
-	Benchmarks  []Benchmark       `yaml:"benchmarks"`
 	Parallel    bool              `yaml:"parallel"`
 	MaxWorkers  int               `yaml:"max_workers"`
 }
@@ -23,17 +22,6 @@ type Test struct {
 	Assertions  []Assertion       `yaml:"assertions"`
 	Extract     map[string]string `yaml:"extract"`
 	DependsOn   []string          `yaml:"depends_on"`
-}
-
-type Benchmark struct {
-	Name        string            `yaml:"name"`
-	Method      string            `yaml:"method"`
-	URL         string            `yaml:"url"`
-	Headers     map[string]string `yaml:"headers"`
-	Body        string            `yaml:"body"`
-	Concurrent  int               `yaml:"concurrent"`
-	Requests    int               `yaml:"requests"`
-	Duration    time.Duration     `yaml:"duration"`
 }
 
 type Assertion struct {
@@ -52,16 +40,4 @@ type TestResult struct {
 	Headers    map[string][]string
 	Error      string
 	Variables  map[string]string
-}
-
-type BenchmarkResult struct {
-	Name            string
-	TotalRequests   int
-	SuccessfulReqs  int
-	FailedReqs      int
-	TotalTime       time.Duration
-	AvgResponseTime time.Duration
-	MinResponseTime time.Duration
-	MaxResponseTime time.Duration
-	RequestsPerSec  float64
 }
