@@ -1,0 +1,88 @@
+name: "API Test Suite Example"
+base_url: "https://jsonplaceholder.typicode.com"
+parallel: true
+max_workers: 5
+
+variables:
+  default_user_id: "1"
+  api_version: "v1"
+
+tests:
+  - name: "Get User"
+    method: "GET"
+    url: "/users/1"
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "id"
+        expected: 1
+      - type: "json_path"
+        path: "name"
+        operator: "not_equals"
+        expected: ""
+      - type: "response_time"
+        expected: 2000
+        operator: "less_than"
+    extract:
+      user_name: "json:name"
+      user_email: "json:email"
+
+  - name: "Get User Posts"
+    method: "GET"
+    url: "/users/1/posts"
+    depends_on: ["Get User"]
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "[0].userId"
+        expected: 1
+    extract:
+      first_post_id: "json:[0].id"
+
+  - name: "Get Specific Post"
+    method: "GET"
+    url: "/posts/1"
+    depends_on: ["Get User Posts"]
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "userId"
+        expected: 1
+      - type: "json_path"
+        path: "title"
+        operator: "not_equals"
+        expected: ""
+
+  - name: "Create Post"
+    method: "POST"
+    url: "/posts"
+    headers:
+      Content-Type: "application/json"
+    body: |
+      {
+        "title": "Test Post by ${user_name}",
+        "body": "This is a test post",
+        "userId": ${default_user_id}
+      }
+    assertions:
+      - type: "status_code"
+        expected: 201
+      - type: "json_path"
+        path: "title"
+        expected: "Test Post by ${user_name}"
+
+benchmarks:
+  - name: "Users API Benchmark"
+    method: "GET"
+    url: "/users"
+    concurrent: 10
+    requests: 100
+
+  - name: "Posts API Load Test"
+    method: "GET"  
+    url: "/posts"
+    concurrent: 5
+    duration: "30s"
