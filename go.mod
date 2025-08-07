@@ -1,4 +1,4 @@
-module goresttest
+module github.com/the-sumeet/goresttest
 
 go 1.24.3
 
