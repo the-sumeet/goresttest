@@ -74,3 +74,19 @@ tests:
         path: "title"
         expected: "Test Post by ${user_name}"
 
+  - name: "Create User from File"
+    method: "POST"
+    url: "/users"
+    headers:
+      Content-Type: "application/json"
+    body_file: "example/create_user.json"
+    assertions:
+      - type: "status_code"
+        expected: 201
+      - type: "json_path"
+        path: "name"
+        expected: "Test User via File"
+      - type: "json_path"
+        path: "username" 
+        expected: "testuser${default_user_id}"
+
