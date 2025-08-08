@@ -114,7 +114,29 @@ func (ve *VariableExtractor) extractFromCSS(response, selector string) (string, 
 }
 
 func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (interface{}, error) {
-	parts := strings.Split(strings.TrimPrefix(path, "$."), ".")
+	// Handle root-level array access like [0].field
+	if strings.HasPrefix(path, "[") {
+		parts := []string{path}
+		if dotIndex := strings.Index(path, "."); dotIndex > 0 {
+			arrayPart := path[:dotIndex]
+			remaining := path[dotIndex+1:]
+			parts = append([]string{arrayPart}, strings.Split(remaining, ".")...)
+		}
+		
+		return ve.processJSONPath(data, parts)
+	}
+	
+	// Handle normal path like $.field or field.subfield
+	cleanPath := strings.TrimPrefix(path, "$.")
+	if cleanPath == "" {
+		return data, nil
+	}
+	
+	parts := strings.Split(cleanPath, ".")
+	return ve.processJSONPath(data, parts)
+}
+
+func (ve *VariableExtractor) processJSONPath(data interface{}, parts []string) (interface{}, error) {
 	current := data
 	
 	for _, part := range parts {
@@ -130,6 +152,7 @@ func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (in
 				return nil, fmt.Errorf("invalid array index: %s", indexStr)
 			}
 			
+			// If there's a key before the bracket, navigate to that field first
 			if key != "" {
 				currentMap, ok := current.(map[string]interface{})
 				if !ok {
@@ -138,6 +161,7 @@ func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (in
 				current = currentMap[key]
 			}
 			
+			// Now handle the array access
 			currentArray, ok := current.([]interface{})
 			if !ok {
 				return nil, fmt.Errorf("expected array at index %d", index)
