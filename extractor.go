@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"encoding/json"
@@ -10,12 +10,15 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// VariableExtractor handles extraction of variables from test responses
 type VariableExtractor struct{}
 
+// NewVariableExtractor creates a new VariableExtractor
 func NewVariableExtractor() *VariableExtractor {
 	return &VariableExtractor{}
 }
 
+// ExtractVariables extracts variables from a test result using the provided extraction rules
 func (ve *VariableExtractor) ExtractVariables(result *TestResult, extractions map[string]string) error {
 	if result.Variables == nil {
 		result.Variables = make(map[string]string)
@@ -114,7 +117,6 @@ func (ve *VariableExtractor) extractFromCSS(response, selector string) (string, 
 }
 
 func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (interface{}, error) {
-	// Handle root-level array access like [0].field
 	if strings.HasPrefix(path, "[") {
 		parts := []string{path}
 		if dotIndex := strings.Index(path, "."); dotIndex > 0 {
@@ -126,7 +128,6 @@ func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (in
 		return ve.processJSONPath(data, parts)
 	}
 	
-	// Handle normal path like $.field or field.subfield
 	cleanPath := strings.TrimPrefix(path, "$.")
 	if cleanPath == "" {
 		return data, nil
@@ -152,7 +153,6 @@ func (ve *VariableExtractor) processJSONPath(data interface{}, parts []string) (
 				return nil, fmt.Errorf("invalid array index: %s", indexStr)
 			}
 			
-			// If there's a key before the bracket, navigate to that field first
 			if key != "" {
 				currentMap, ok := current.(map[string]interface{})
 				if !ok {
@@ -161,7 +161,6 @@ func (ve *VariableExtractor) processJSONPath(data interface{}, parts []string) (
 				current = currentMap[key]
 			}
 			
-			// Now handle the array access
 			currentArray, ok := current.([]interface{})
 			if !ok {
 				return nil, fmt.Errorf("expected array at index %d", index)

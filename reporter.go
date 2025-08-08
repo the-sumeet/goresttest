@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"encoding/json"
@@ -9,12 +9,15 @@ import (
 	"time"
 )
 
+// Reporter handles generation of test reports in various formats
 type Reporter struct{}
 
+// NewReporter creates a new Reporter
 func NewReporter() *Reporter {
 	return &Reporter{}
 }
 
+// PrintConsoleReport prints test results to the console
 func (r *Reporter) PrintConsoleReport(testResults []*TestResult) {
 	fmt.Println("=== API Test Results ===")
 	fmt.Println()
@@ -54,7 +57,6 @@ func (r *Reporter) printTestResults(results []*TestResult) {
 	}
 }
 
-
 func (r *Reporter) printSummary(testResults []*TestResult) {
 	fmt.Println(strings.Repeat("=", 80))
 	
@@ -74,6 +76,7 @@ func (r *Reporter) printSummary(testResults []*TestResult) {
 	}
 }
 
+// GenerateJSONReport generates a JSON report file
 func (r *Reporter) GenerateJSONReport(testResults []*TestResult, filename string) error {
 	report := struct {
 		Timestamp time.Time     `json:"timestamp"`
@@ -110,6 +113,7 @@ func (r *Reporter) GenerateJSONReport(testResults []*TestResult, filename string
 	return os.WriteFile(filename, data, 0644)
 }
 
+// GenerateHTMLReport generates an HTML report file
 func (r *Reporter) GenerateHTMLReport(testResults []*TestResult, filename string) error {
 	tmpl := `<!DOCTYPE html>
 <html>
