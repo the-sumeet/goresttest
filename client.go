@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -35,8 +36,28 @@ func (c *HTTPClient) ExecuteRequest(test Test, variables map[string]string) (*Te
 	}
 
 	var body io.Reader
+	if test.Body != "" && test.BodyFile != "" {
+		return &TestResult{
+			Name:    test.Name,
+			Success: false,
+			Error:   "cannot specify both 'body' and 'body_file' in the same test",
+		}, fmt.Errorf("cannot specify both 'body' and 'body_file' in the same test")
+	}
+	
 	if test.Body != "" {
 		bodyStr := interpolateVariables(test.Body, variables)
+		body = bytes.NewBufferString(bodyStr)
+	} else if test.BodyFile != "" {
+		bodyFilePath := interpolateVariables(test.BodyFile, variables)
+		bodyContent, err := os.ReadFile(bodyFilePath)
+		if err != nil {
+			return &TestResult{
+				Name:    test.Name,
+				Success: false,
+				Error:   fmt.Sprintf("failed to read body file '%s': %v", bodyFilePath, err),
+			}, fmt.Errorf("failed to read body file '%s': %w", bodyFilePath, err)
+		}
+		bodyStr := interpolateVariables(string(bodyContent), variables)
 		body = bytes.NewBufferString(bodyStr)
 	}
 

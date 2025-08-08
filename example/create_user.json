@@ -1,0 +1,12 @@
+{
+  "name": "Test User via File",
+  "username": "testuser${default_user_id}",
+  "email": "testuser${default_user_id}@example.com",
+  "address": {
+    "street": "123 Test Street",
+    "city": "Test City",
+    "zipcode": "12345"
+  },
+  "phone": "1-555-123-4567",
+  "website": "testuser.org"
+}
