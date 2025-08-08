@@ -1,0 +1,57 @@
+name: "JSONPlaceholder API Tests"
+base_url: "https://jsonplaceholder.typicode.com"
+variables:
+  user_id: "1"
+
+tests:
+  - name: "Get User by ID"
+    method: "GET"
+    url: "/users/${user_id}"
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "$.id"
+        expected: 1
+      - type: "json_path"
+        path: "$.name"
+        expected: "Leanne Graham"
+    extract:
+      username: "json:$.username"
+
+  - name: "Get Posts for User"
+    method: "GET"
+    url: "/users/${user_id}/posts"
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "$[0].userId"
+        expected: 1
+
+  - name: "Create New Post"
+    method: "POST"
+    url: "/posts"
+    headers:
+      Content-Type: "application/json"
+    body: '{"title": "Test Post", "body": "This is a test post", "userId": ${user_id}}'
+    assertions:
+      - type: "status_code"
+        expected: 201
+      - type: "json_path"
+        path: "$.title"
+        expected: "Test Post"
+    extract:
+      new_post_id: "json:$.id"
+
+  - name: "Get Created Post"
+    method: "GET"
+    url: "/posts/${new_post_id}"
+    depends_on:
+      - "Create New Post"
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "$.title"
+        expected: "Test Post"

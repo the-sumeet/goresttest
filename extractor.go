@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"encoding/json"
@@ -10,12 +10,15 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// VariableExtractor handles extraction of variables from test responses
 type VariableExtractor struct{}
 
+// NewVariableExtractor creates a new VariableExtractor
 func NewVariableExtractor() *VariableExtractor {
 	return &VariableExtractor{}
 }
 
+// ExtractVariables extracts variables from a test result using the provided extraction rules
 func (ve *VariableExtractor) ExtractVariables(result *TestResult, extractions map[string]string) error {
 	if result.Variables == nil {
 		result.Variables = make(map[string]string)
@@ -114,7 +117,27 @@ func (ve *VariableExtractor) extractFromCSS(response, selector string) (string, 
 }
 
 func (ve *VariableExtractor) getJSONPathValue(data interface{}, path string) (interface{}, error) {
-	parts := strings.Split(strings.TrimPrefix(path, "$."), ".")
+	if strings.HasPrefix(path, "[") {
+		parts := []string{path}
+		if dotIndex := strings.Index(path, "."); dotIndex > 0 {
+			arrayPart := path[:dotIndex]
+			remaining := path[dotIndex+1:]
+			parts = append([]string{arrayPart}, strings.Split(remaining, ".")...)
+		}
+		
+		return ve.processJSONPath(data, parts)
+	}
+	
+	cleanPath := strings.TrimPrefix(path, "$.")
+	if cleanPath == "" {
+		return data, nil
+	}
+	
+	parts := strings.Split(cleanPath, ".")
+	return ve.processJSONPath(data, parts)
+}
+
+func (ve *VariableExtractor) processJSONPath(data interface{}, parts []string) (interface{}, error) {
 	current := data
 	
 	for _, part := range parts {

@@ -1,0 +1,33 @@
+name: "Chained API Tests Example"
+base_url: "https://jsonplaceholder.typicode.com"
+parallel: false  # Must be false for chained tests
+
+variables:
+  admin_user: "admin"
+
+tests:
+
+  - name: "Users"
+    method: "GET"
+    url: "/users"
+    headers:
+      Content-Type: "application/json"
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "[0].name"
+        expected: "Leanne Graham"
+    extract:
+      user_id: "json:[0].id"
+
+  - name: "Get User Posts"
+    method: "GET"
+    url: "/posts?userId=${user_id}"
+    depends_on: ["Users"] 
+    assertions:
+      - type: "status_code"
+        expected: 200
+      - type: "json_path"
+        path: "[0].userId"
+        expected: "${user_id}"

@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"testing"
@@ -77,7 +77,7 @@ func TestAssertionEngine_StatusCode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -231,7 +231,7 @@ func TestAssertionEngine_JSONPath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -333,7 +333,7 @@ func TestAssertionEngine_HTMLSelector(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -396,7 +396,7 @@ func TestAssertionEngine_Header(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -465,7 +465,7 @@ func TestAssertionEngine_BodyContains(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -556,7 +556,7 @@ func TestAssertionEngine_Regex(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -624,7 +624,7 @@ func TestAssertionEngine_ResponseTime(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := engine.runSingleAssertion(tt.result, tt.assertion)
+			err := engine.runSingleAssertion(tt.result, tt.assertion, nil)
 			if (err != nil) != tt.wantError {
 				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
 			}
@@ -657,7 +657,7 @@ func TestAssertionEngine_RunAssertions(t *testing.T) {
 		},
 	}
 
-	errors := engine.RunAssertions(result, assertions)
+	errors := engine.RunAssertions(result, assertions, nil)
 	if len(errors) != 0 {
 		t.Errorf("Expected no errors, got %d: %v", len(errors), errors)
 	}
@@ -674,8 +674,232 @@ func TestAssertionEngine_RunAssertions(t *testing.T) {
 		},
 	}
 
-	errors = engine.RunAssertions(result, failingAssertions)
+	errors = engine.RunAssertions(result, failingAssertions, nil)
 	if len(errors) != 2 {
 		t.Errorf("Expected 2 errors, got %d: %v", len(errors), errors)
+	}
+}
+
+func TestAssertionEngine_VariableInterpolation(t *testing.T) {
+	engine := NewAssertionEngine()
+	
+	// Test data with variables
+	jsonResponse := `{
+		"user_id": 123,
+		"name": "John Doe", 
+		"status": "active",
+		"score": 85.5,
+		"verified": true
+	}`
+	
+	result := &TestResult{
+		StatusCode: 200,
+		Response:   jsonResponse,
+		Headers: map[string][]string{
+			"Content-Type": {"application/json"},
+			"User-Agent":   {"test-client"},
+		},
+	}
+	
+	variables := map[string]string{
+		"expected_id":     "123",
+		"expected_name":   "John Doe",
+		"expected_status": "active",
+		"expected_score":  "85.5",
+		"expected_bool":   "true",
+		"status_code":     "200",
+		"header_name":     "Content-Type",
+		"header_value":    "application/json",
+	}
+	
+	tests := []struct {
+		name      string
+		assertion Assertion
+		wantError bool
+	}{
+		{
+			name: "status code with variable",
+			assertion: Assertion{
+				Type:     "status_code",
+				Expected: "${status_code}",
+			},
+			wantError: false,
+		},
+		{
+			name: "json path string with variable",
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "name",
+				Expected: "${expected_name}",
+			},
+			wantError: false,
+		},
+		{
+			name: "json path number with variable",
+			assertion: Assertion{
+				Type:     "json_path", 
+				Path:     "user_id",
+				Expected: "${expected_id}",
+			},
+			wantError: false,
+		},
+		{
+			name: "json path with variable in path",
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "${field_name}",
+				Expected: "active",
+			},
+			wantError: true, // field_name not defined in variables
+		},
+		{
+			name: "header assertion with variable",
+			assertion: Assertion{
+				Type:     "header",
+				Path:     "${header_name}",
+				Expected: "${header_value}",
+			},
+			wantError: false,
+		},
+		{
+			name: "body contains with variable",
+			assertion: Assertion{
+				Type:     "body_contains",
+				Expected: "${expected_name}",
+			},
+			wantError: false,
+		},
+		{
+			name: "multiple variables in expected value",
+			assertion: Assertion{
+				Type:     "body_contains",
+				Expected: "user_id\": ${expected_id}",
+			},
+			wantError: false,
+		},
+		{
+			name: "regex with variable",
+			assertion: Assertion{
+				Type:     "regex",
+				Expected: "\"name\": \"${expected_name}\"",
+			},
+			wantError: false,
+		},
+		{
+			name: "boolean value with variable", 
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "verified",
+				Expected: "${expected_bool}",
+			},
+			wantError: false,
+		},
+	}
+	
+	// Add field_name variable for one specific test
+	variablesWithField := make(map[string]string)
+	for k, v := range variables {
+		variablesWithField[k] = v
+	}
+	variablesWithField["field_name"] = "status"
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testVariables := variables
+			if tt.name == "json path with variable in path" {
+				testVariables = variablesWithField
+				tt.wantError = false // Now it should work
+			}
+			
+			err := engine.runSingleAssertion(result, tt.assertion, testVariables)
+			if (err != nil) != tt.wantError {
+				t.Errorf("runSingleAssertion() with variables error = %v, wantError %v", err, tt.wantError)
+			}
+		})
+	}
+}
+
+func TestAssertionEngine_VariableInterpolation_ComplexScenarios(t *testing.T) {
+	engine := NewAssertionEngine()
+	
+	// Test complex scenarios with chained variables
+	jsonResponse := `{
+		"data": {
+			"users": [
+				{"id": 1, "name": "Alice"},
+				{"id": 2, "name": "Bob"}
+			]
+		},
+		"meta": {
+			"count": 2,
+			"status": "success"
+		}
+	}`
+	
+	result := &TestResult{
+		StatusCode: 201,
+		Response:   jsonResponse,
+	}
+	
+	variables := map[string]string{
+		"user_index":    "0",
+		"expected_user": "Alice", 
+		"user_id":       "1",
+		"status_code":   "201",
+		"meta_field":    "count",
+		"expected_count": "2",
+	}
+	
+	tests := []struct {
+		name      string
+		assertion Assertion
+		wantError bool
+	}{
+		{
+			name: "nested json path with array index variable",
+			assertion: Assertion{
+				Type:     "json_path",
+				Path:     "data.users[${user_index}].name",
+				Expected: "${expected_user}",
+			},
+			wantError: false,
+		},
+		{
+			name: "dynamic path construction",
+			assertion: Assertion{
+				Type:     "json_path", 
+				Path:     "meta.${meta_field}",
+				Expected: "${expected_count}",
+			},
+			wantError: false,
+		},
+		{
+			name: "partial variable replacement",
+			assertion: Assertion{
+				Type:     "body_contains",
+				Expected: "\"id\": ${user_id}, \"name\":",
+			},
+			wantError: false,
+		},
+		{
+			name: "status code as string variable",
+			assertion: Assertion{
+				Type:     "status_code",
+				Expected: "${status_code}",
+			},
+			wantError: false,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := engine.runSingleAssertion(result, tt.assertion, variables)
+			if (err != nil) != tt.wantError {
+				t.Errorf("runSingleAssertion() error = %v, wantError %v", err, tt.wantError)
+				if err != nil {
+					t.Logf("Error details: %s", err.Error())
+				}
+			}
+		})
 	}
 }

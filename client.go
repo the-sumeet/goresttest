@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"bytes"
@@ -10,11 +10,13 @@ import (
 	"time"
 )
 
+// HTTPClient handles HTTP requests for tests
 type HTTPClient struct {
 	client  *http.Client
 	baseURL string
 }
 
+// NewHTTPClient creates a new HTTPClient with the specified base URL
 func NewHTTPClient(baseURL string) *HTTPClient {
 	return &HTTPClient{
 		client: &http.Client{
@@ -24,11 +26,12 @@ func NewHTTPClient(baseURL string) *HTTPClient {
 	}
 }
 
+// ExecuteRequest executes a test request and returns the result
 func (c *HTTPClient) ExecuteRequest(test Test, variables map[string]string) (*TestResult, error) {
 	start := time.Now()
 	
 	url := c.buildURL(test.URL)
-	url = interpolateVariables(url, variables)
+	url = InterpolateVariables(url, variables)
 	
 	method := strings.ToUpper(test.Method)
 	if method == "" {
@@ -45,10 +48,10 @@ func (c *HTTPClient) ExecuteRequest(test Test, variables map[string]string) (*Te
 	}
 	
 	if test.Body != "" {
-		bodyStr := interpolateVariables(test.Body, variables)
+		bodyStr := InterpolateVariables(test.Body, variables)
 		body = bytes.NewBufferString(bodyStr)
 	} else if test.BodyFile != "" {
-		bodyFilePath := interpolateVariables(test.BodyFile, variables)
+		bodyFilePath := InterpolateVariables(test.BodyFile, variables)
 		bodyContent, err := os.ReadFile(bodyFilePath)
 		if err != nil {
 			return &TestResult{
@@ -57,7 +60,7 @@ func (c *HTTPClient) ExecuteRequest(test Test, variables map[string]string) (*Te
 				Error:   fmt.Sprintf("failed to read body file '%s': %v", bodyFilePath, err),
 			}, fmt.Errorf("failed to read body file '%s': %w", bodyFilePath, err)
 		}
-		bodyStr := interpolateVariables(string(bodyContent), variables)
+		bodyStr := InterpolateVariables(string(bodyContent), variables)
 		body = bytes.NewBufferString(bodyStr)
 	}
 
@@ -71,7 +74,7 @@ func (c *HTTPClient) ExecuteRequest(test Test, variables map[string]string) (*Te
 	}
 
 	for key, value := range test.Headers {
-		interpolatedValue := interpolateVariables(value, variables)
+		interpolatedValue := InterpolateVariables(value, variables)
 		req.Header.Set(key, interpolatedValue)
 	}
 

@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"encoding/json"
@@ -11,17 +11,20 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
+// AssertionEngine handles test assertions
 type AssertionEngine struct{}
 
+// NewAssertionEngine creates a new AssertionEngine
 func NewAssertionEngine() *AssertionEngine {
 	return &AssertionEngine{}
 }
 
-func (ae *AssertionEngine) RunAssertions(result *TestResult, assertions []Assertion) []string {
+// RunAssertions executes all assertions for a test result
+func (ae *AssertionEngine) RunAssertions(result *TestResult, assertions []Assertion, variables map[string]string) []string {
 	var errors []string
 
 	for _, assertion := range assertions {
-		if err := ae.runSingleAssertion(result, assertion); err != nil {
+		if err := ae.runSingleAssertion(result, assertion, variables); err != nil {
 			errors = append(errors, err.Error())
 		}
 	}
@@ -29,24 +32,25 @@ func (ae *AssertionEngine) RunAssertions(result *TestResult, assertions []Assert
 	return errors
 }
 
-func (ae *AssertionEngine) runSingleAssertion(result *TestResult, assertion Assertion) error {
-	switch assertion.Type {
+func (ae *AssertionEngine) runSingleAssertion(result *TestResult, assertion Assertion, variables map[string]string) error {
+	interpolatedAssertion := ae.interpolateAssertion(assertion, variables)
+	switch interpolatedAssertion.Type {
 	case "status_code":
-		return ae.assertStatusCode(result, assertion)
+		return ae.assertStatusCode(result, interpolatedAssertion)
 	case "json_path":
-		return ae.assertJSONPath(result, assertion)
+		return ae.assertJSONPath(result, interpolatedAssertion)
 	case "xpath", "css_selector":
-		return ae.assertHTMLSelector(result, assertion)
+		return ae.assertHTMLSelector(result, interpolatedAssertion)
 	case "header":
-		return ae.assertHeader(result, assertion)
+		return ae.assertHeader(result, interpolatedAssertion)
 	case "body_contains":
-		return ae.assertBodyContains(result, assertion)
+		return ae.assertBodyContains(result, interpolatedAssertion)
 	case "regex":
-		return ae.assertRegex(result, assertion)
+		return ae.assertRegex(result, interpolatedAssertion)
 	case "response_time":
-		return ae.assertResponseTime(result, assertion)
+		return ae.assertResponseTime(result, interpolatedAssertion)
 	default:
-		return fmt.Errorf("unknown assertion type: %s", assertion.Type)
+		return fmt.Errorf("unknown assertion type: %s", interpolatedAssertion.Type)
 	}
 }
 
@@ -308,7 +312,6 @@ func (ae *AssertionEngine) getJSONPathValue(data interface{}, path string) (inte
 }
 
 func (ae *AssertionEngine) compareValues(actual, expected interface{}, operator, context string) error {
-	// Normalize types before comparison
 	normalizedActual, normalizedExpected := ae.normalizeTypes(actual, expected)
 	switch operator {
 	case "equals", "==":
@@ -338,16 +341,12 @@ func (ae *AssertionEngine) compareValues(actual, expected interface{}, operator,
 	return nil
 }
 
-// normalizeTypes converts numeric types to ensure proper comparison
-// JSON numbers are parsed as float64, but YAML might parse them as int
 func (ae *AssertionEngine) normalizeTypes(actual, expected interface{}) (interface{}, interface{}) {
-	// Handle numeric type conversions
 	actualFloat, actualIsFloat := actual.(float64)
 	expectedFloat, expectedIsFloat := expected.(float64)
 	actualInt, actualIsInt := actual.(int)
 	expectedInt, expectedIsInt := expected.(int)
 
-	// If one is float64 and the other is int, convert both to float64
 	if actualIsFloat && expectedIsInt {
 		return actualFloat, float64(expectedInt)
 	}
@@ -355,20 +354,67 @@ func (ae *AssertionEngine) normalizeTypes(actual, expected interface{}) (interfa
 		return float64(actualInt), expectedFloat
 	}
 
-	// If actual is float64 but represents a whole number, and expected is int
 	if actualIsFloat && expectedIsInt {
 		if actualFloat == float64(int(actualFloat)) {
 			return actualFloat, float64(expectedInt)
 		}
 	}
 
-	// If expected is float64 but represents a whole number, and actual is int
 	if actualIsInt && expectedIsFloat {
 		if expectedFloat == float64(int(expectedFloat)) {
 			return float64(actualInt), expectedFloat
 		}
 	}
 
-	// No conversion needed
 	return actual, expected
+}
+
+func (ae *AssertionEngine) interpolateAssertion(assertion Assertion, variables map[string]string) Assertion {
+	if variables == nil {
+		return assertion
+	}
+	
+	interpolated := Assertion{
+		Type:     assertion.Type,
+		Path:     InterpolateVariables(assertion.Path, variables),
+		Operator: assertion.Operator,
+		Expected: ae.interpolateExpectedValue(assertion.Expected, variables),
+	}
+	
+	return interpolated
+}
+
+func (ae *AssertionEngine) interpolateExpectedValue(expected interface{}, variables map[string]string) interface{} {
+	if variables == nil {
+		return expected
+	}
+	
+	switch v := expected.(type) {
+	case string:
+		interpolated := InterpolateVariables(v, variables)
+		
+		if interpolated != v && strings.HasPrefix(v, "${") && strings.HasSuffix(v, "}") {
+			if intVal, err := strconv.Atoi(interpolated); err == nil {
+				return intVal
+			}
+			if floatVal, err := strconv.ParseFloat(interpolated, 64); err == nil {
+				return floatVal
+			}
+			if boolVal, err := strconv.ParseBool(interpolated); err == nil {
+				return boolVal
+			}
+		}
+		
+		return interpolated
+	case int, float64, bool:
+		return v
+	default:
+		if str := fmt.Sprintf("%v", expected); str != "" {
+			interpolated := InterpolateVariables(str, variables)
+			if interpolated != str {
+				return interpolated
+			}
+		}
+		return expected
+	}
 }

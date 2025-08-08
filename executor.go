@@ -1,4 +1,4 @@
-package main
+package goresttest
 
 import (
 	"fmt"
@@ -164,7 +164,7 @@ func (te *TestExecutor) executeTest(test Test) (*TestResult, error) {
 	}
 
 	if len(test.Assertions) > 0 {
-		assertionErrors := te.assertionEngine.RunAssertions(result, test.Assertions)
+		assertionErrors := te.assertionEngine.RunAssertions(result, test.Assertions, currentVariables)
 		if len(assertionErrors) > 0 {
 			result.Success = false
 			result.Error = fmt.Sprintf("assertions failed: %v", assertionErrors)
